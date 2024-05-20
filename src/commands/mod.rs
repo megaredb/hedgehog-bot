@@ -56,13 +56,12 @@ async fn _handle_command(
                 .await?
         }
         Command::Email(email) => {
-            let value = boosty_client
+            let pattern_id = match boosty_client
                 .search(&SearchRequest {
                     chunk: email.clone(),
                 })
-                .await;
-
-            let pattern_id = match value {
+                .await
+            {
                 Ok(result)
                     if (result.data.len() == 1 && result.data.last().unwrap().email == email) =>
                 {
