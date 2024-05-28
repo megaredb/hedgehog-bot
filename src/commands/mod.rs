@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use crate::{
-    boosty_api::{types::subscribers::SearchRequest, BoostyClient},
+    boosty_api::{
+        types::subscribers::{Order, SearchRequest, SortBy, SubscribersRequest},
+        BoostyClient,
+    },
     translations::TranslationType,
     utils::Bot,
 };
@@ -63,9 +66,32 @@ async fn _handle_command(
                 .await
             {
                 Ok(result)
-                    if (result.data.len() == 1 && result.data.last().unwrap().email == email) =>
+                    if (!result.data.is_empty() && result.data.last().unwrap().email == email) =>
                 {
-                    "user-found"
+                    let mut pattern = "no-user-found";
+
+                    if let Ok(user_resp) = boosty_client
+                        .subscribers(&SubscribersRequest {
+                            user_ids: vec![result.data.last().unwrap().id],
+                            sort_by: SortBy::default(),
+                            limit: 10,
+                            offset: Some(0),
+                            order: Order::default(),
+                        })
+                        .await
+                    {
+                        pattern = "user-found";
+
+                        let user = user_resp.data.last().unwrap();
+                        args.set("name", user.basic_info.name.clone());
+                        args.set("level", user.level.name.clone());
+                    }
+
+                    pattern
+                }
+                Err(err) => {
+                    error!("{}", err.to_string());
+                    "no-user-found"
                 }
                 _ => "no-user-found",
             };

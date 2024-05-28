@@ -22,13 +22,13 @@ async fn skip_updates(bot: &Bot) {
         .limit(1)
         .offset(-1)
         .await
-        .expect("Can't get the latest update.");
+        .expect("Unable to get the latest update.");
 
     if let Some(latest_update) = old_updates.last() {
         bot.get_updates()
             .offset(latest_update.id + 1)
             .await
-            .expect("Can't skip updates.");
+            .expect("Unable to skip updates.");
 
         info!("Successfully skipped old updates.");
     }

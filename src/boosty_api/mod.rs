@@ -1,6 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
-use reqwest::{header::USER_AGENT, RequestBuilder};
+use reqwest::{header::USER_AGENT, Proxy, RequestBuilder};
 use serde::de::DeserializeOwned;
 use tokio::sync::RwLock;
 
@@ -33,11 +33,7 @@ pub struct BoostyClient {
 
 impl BoostyClient {
     async fn prepare_request(&self, request: RequestBuilder) -> RequestBuilder {
-        request.bearer_auth(self.auth.read().await).header(
-            USER_AGENT,
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
-             (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        )
+        request.bearer_auth(self.auth.read().await)
     }
 
     async fn send_request_json_no_auth_check<R>(
@@ -49,7 +45,8 @@ impl BoostyClient {
     {
         Ok(request
             .send()
-            .await?
+            .await
+            .unwrap()
             .error_for_status()?
             .json::<R>()
             .await?)
@@ -81,7 +78,7 @@ impl BoostyClient {
             .send_request_json_no_auth_check::<RefreshAuthDataResponse>(
                 self.prepare_request(self.client.post(self.full_url("/oauth/token/")))
                     .await
-                    .json(&RefreshAuthDataRequest {
+                    .form(&RefreshAuthDataRequest {
                         device_id: auth_data.device_id,
                         device_os: auth_data.device_os,
                         grant_type: auth_data.grant_type,
@@ -106,9 +103,12 @@ impl BoostyClient {
         data: &SubscribersRequest,
     ) -> Result<SubscribersResponse, Box<dyn std::error::Error>> {
         self.send_request_json::<SubscribersResponse>(
-            self.prepare_request(self.client.get("/v1/blog/hedgehoginc/subscribers"))
-                .await
-                .query(data),
+            self.prepare_request(
+                self.client
+                    .get(self.full_url("/v1/blog/hedgehoginc/subscribers")),
+            )
+            .await
+            .query(data),
         )
         .await
     }
@@ -118,9 +118,12 @@ impl BoostyClient {
         data: &SearchRequest,
     ) -> Result<SearchResponse, Box<dyn std::error::Error>> {
         self.send_request_json::<SearchResponse>(
-            self.prepare_request(self.client.get("/v1/blog/stat/hedgehoginc/search"))
-                .await
-                .query(data),
+            self.prepare_request(
+                self.client
+                    .get(self.full_url("/v1/blog/stat/hedgehoginc/search")),
+            )
+            .await
+            .query(data),
         )
         .await
     }
