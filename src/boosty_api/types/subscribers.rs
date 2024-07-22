@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscriptionLevel {
     pub created_at: u64,
@@ -14,7 +14,7 @@ pub struct SubscriptionLevel {
     pub price: f32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BasicSubscriber {
     pub avatar_url: String,
@@ -24,13 +24,12 @@ pub struct BasicSubscriber {
     pub name: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Subscriber {
-    pub can_write: String,
+    pub can_write: bool,
     pub is_black_listed: bool,
     pub level: SubscriptionLevel,
-    pub next_pay_time: u128,
     pub on_time: u128,
     pub payments: f32,
     pub price: f32,
@@ -40,7 +39,13 @@ pub struct Subscriber {
     pub basic_info: BasicSubscriber,
 }
 
-#[derive(Serialize, Debug)]
+impl Subscriber {
+    pub fn is_paid(&self) -> bool {
+        self.subscribed && self.price > 0.
+    }
+}
+
+#[derive(Serialize, Debug, Clone)]
 pub struct SortBy(String);
 
 impl Default for SortBy {
@@ -49,7 +54,7 @@ impl Default for SortBy {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Order(String);
 
 impl Default for Order {
@@ -58,7 +63,32 @@ impl Default for Order {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Debug, Clone)]
+pub struct SubscribersVec(Vec<u64>);
+
+impl From<Vec<u64>> for SubscribersVec {
+    fn from(value: Vec<u64>) -> Self {
+        Self(value)
+    }
+}
+
+impl Serialize for SubscribersVec {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(
+            self.0
+                .iter()
+                .map(|&id| id.to_string())
+                .collect::<Vec<String>>()
+                .join(",")
+                .as_str(),
+        )
+    }
+}
+
+#[derive(Serialize, Debug, Clone)]
 pub struct SubscribersRequest {
     #[serde(default)]
     pub sort_by: SortBy,
@@ -66,10 +96,10 @@ pub struct SubscribersRequest {
     pub offset: Option<u32>,
     #[serde(default)]
     pub order: Order,
-    pub user_ids: Vec<u64>,
+    pub user_ids: SubscribersVec,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribersResponse {
     pub data: Vec<Subscriber>,
@@ -78,12 +108,12 @@ pub struct SubscribersResponse {
     pub total: u32,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct SearchRequest {
     pub chunk: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
     pub data: Vec<BasicSubscriber>,

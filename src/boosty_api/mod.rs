@@ -1,6 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
-use reqwest::{header::USER_AGENT, Proxy, RequestBuilder};
+use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;
 use tokio::sync::RwLock;
 
@@ -8,6 +8,8 @@ use self::types::{auth::*, subscribers::*};
 
 pub mod auth;
 pub mod types;
+
+pub type RequestResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 #[derive(Clone, Debug)]
 struct BaseUrl(String);
@@ -36,10 +38,7 @@ impl BoostyClient {
         request.bearer_auth(self.auth.read().await)
     }
 
-    async fn send_request_json_no_auth_check<R>(
-        &self,
-        request: RequestBuilder,
-    ) -> Result<R, Box<dyn std::error::Error>>
+    async fn send_request_json_no_auth_check<R>(&self, request: RequestBuilder) -> RequestResult<R>
     where
         R: DeserializeOwned,
     {
@@ -52,10 +51,7 @@ impl BoostyClient {
             .await?)
     }
 
-    async fn send_request_json<R>(
-        &self,
-        request: RequestBuilder,
-    ) -> Result<R, Box<dyn std::error::Error>>
+    async fn send_request_json<R>(&self, request: RequestBuilder) -> RequestResult<R>
     where
         R: DeserializeOwned,
     {
@@ -67,7 +63,9 @@ impl BoostyClient {
         format!("{}{}", self.base_url, url.to_string())
     }
 
-    pub async fn refresh_auth_if_expired(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn refresh_auth_if_expired(
+        &self,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let auth_data = self.auth.read().await.clone();
 
         if !auth_data.expired() {
@@ -101,7 +99,7 @@ impl BoostyClient {
     pub async fn subscribers(
         &self,
         data: &SubscribersRequest,
-    ) -> Result<SubscribersResponse, Box<dyn std::error::Error>> {
+    ) -> RequestResult<SubscribersResponse> {
         self.send_request_json::<SubscribersResponse>(
             self.prepare_request(
                 self.client
@@ -113,10 +111,7 @@ impl BoostyClient {
         .await
     }
 
-    pub async fn search(
-        &self,
-        data: &SearchRequest,
-    ) -> Result<SearchResponse, Box<dyn std::error::Error>> {
+    pub async fn search(&self, data: &SearchRequest) -> RequestResult<SearchResponse> {
         self.send_request_json::<SearchResponse>(
             self.prepare_request(
                 self.client
